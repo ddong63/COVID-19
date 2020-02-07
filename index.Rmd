@@ -1,5 +1,5 @@
 ---
-title: "新型冠状病毒变化分析"
+title: "新型冠状病毒变化分析(2019-nCov Analysis)"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -14,6 +14,8 @@ library(dplyr)
 library(lubridate)
 library(plotly)
 library(tidyr)
+library(DT)
+
 ```
 
 ```{r load_data}
@@ -36,7 +38,7 @@ count_by_date = DXYOverall %>%
 ```
 
 
-数量汇总(Summary Statistics)
+每日数量(Daily Counts)
 =======================================================================
 
 Column {data-width=500}
@@ -69,8 +71,6 @@ ggplotly(p_confirm)  %>%
 
 ```
 
-Column {data-width=400}
------------------------------------------------------------------------
 
 ### 治愈，死亡，重症人数 (Confirmed, Cured, Serious Count)
 
@@ -95,9 +95,29 @@ ggplotly(p_cured) %>%
   layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 数据汇总(Daily Counts Table)
+
+```{r daily_counts_dt}
+count_by_date %>% 
+  select(-DayseriousCount) %>%
+  arrange(desc(updateDate)) %>%
+  datatable(caption = 'Table 1: Daily Counts (Confirmed, Suspected, Cured, Dead).', 
+            filter = 'top', options = list(pageLength = 50))
+```
+
+每日新增(Daily Increase)
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
 ### 新增确诊，新增疑似 (Confirmed and Suspected Counts Daily Increase)
 
-```{r daily_increased}
+```{r confirmed_increased}
 dailyInc = count_by_date %>%
   gather(category, count, DayConfirmedCount:DayseriousCount) %>%
   arrange(category, updateDate) %>%
@@ -125,13 +145,47 @@ ggplotly(p_inc) %>%
   layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
-区域变化(Regional Trend)
+### 新增治愈，新增死亡 (Cured and Dead Counts Daily Increase)
+
+```{r cured_increased}
+p_cure_inc = dailyInc %>% 
+  subset(category %in% c('DayCuredCount', 'DayDeadCount')
+         & !is.na(countInc)) %>%
+  ggplot(aes(x = factor(updateDate), y = countInc, col = category, group = category)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Count',
+                     breaks = seq(0, 500, by = 50)) +
+  ggtitle('Daily Increase Cured and Dead') +
+  scale_color_discrete('', breaks=c('DayCuredCount', 'DayDeadCount')) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+ 
+ggplotly(p_cure_inc) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 每日新增数据 (Daily Increase Counts)
+
+```{r dailyInc_dt}
+dailyInc %>% 
+  arrange(desc(updateDate)) %>%
+  datatable(caption = 'Table 2: Daily Increase Counts (Confirmed, Suspected, Cured, Dead).', filter = 'top', options = list(pageLength = 50))
+```
+
+湖北及其他省份(Hubei vs. Non-Hubei)
 =======================================================================
 
-<!-- Column {data-width=650} -->
-<!-- ----------------------------------------------------------------------- -->
+Column {data-width=500}
+-----------------------------------------------------------------------
 
-### 确诊，疑似湖北省内外对比(Confirmed and Suspected Counts (Hubei vs. Other Areas))
+### 确诊，治愈，死亡湖北省内外对比(Confirmed, Cured, Dead Counts (Hubei vs. Other Areas))
 
 ```{r hubei_others}
 province_count = DXYArea %>% 
@@ -158,7 +212,7 @@ p_hubei_v_others = hubei_v_others %>%
   scale_y_continuous('Total Count') +
   ggtitle('Daily Confirmed and Suspected') +
   scale_color_discrete('', breaks=c('Hubei', 'Outside Hubei')) +
-  facet_wrap(~category, scales = 'free_y') +
+  facet_wrap(~category, scales = 'free_y', nrow=2) +
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1), 
         plot.title = element_text(hjust = 0.5),
@@ -167,4 +221,30 @@ p_hubei_v_others = hubei_v_others %>%
 ggplotly(p_hubei_v_others) %>%
   layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 确诊，治愈，死亡湖北省内外数据(Confirmed, Cured, Dead Counts (Hubei vs. Other Areas) Counts)
+
+```{r hubei_others_dt}
+hubei_v_others_wd = hubei_v_others %>% 
+  spread(category, tot_count)
+
+colnames(hubei_v_others_wd) = c('Date', 'Province', 'Confirmed', 'Cured', 'Dead')
+
+hubei_v_others_wd %>% 
+  ungroup() %>%
+  arrange(desc(Date)) %>%
+  datatable(caption = 'Table 3: Confirmed, Cured, Dead Counts (Hubei vs. Other Areas) Counts', filter = 'top', options = list(pageLength = 50))
+```
+
+区域变化(Province Trend)
+=======================================================================
+
+
+城市变化(City Trend)
+=======================================================================
+
+
 
