@@ -45,7 +45,7 @@ Column {data-width=500}
 ### 确诊，疑似病例数量
 
 ```{r daily_confirm_suspect}
-#p_confirm = 
+p_confirm = 
   count_by_date %>% 
   select(DayConfirmedCount, DaySuspectedCount, updateDate) %>%
   gather(category, count, DayConfirmedCount, DaySuspectedCount) %>%
@@ -53,7 +53,7 @@ Column {data-width=500}
   geom_point() +
   geom_line() +
   xlab('Date') + 
-  scale_y_log10('Count',
+  scale_y_continuous('Count',
                 breaks = c(1, 5000, 10000, 15000, 20000, 30000, 40000, 50000),
                 labels = c('1', '5,000', '10,000', '15,000', '20,000', '30,000', '40,000', '50,000')) +
   ggtitle('Daily Confirmed and Suspected') +
@@ -64,9 +64,9 @@ Column {data-width=500}
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
 
-#ggplotly(p_confirm)
+ggplotly(p_confirm)  %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
 
-  
 ```
 
 Column {data-width=400}
@@ -75,7 +75,7 @@ Column {data-width=400}
 ### 治愈，死亡，重症人数
 
 ```{r daily_cured_death}
-  count_by_date %>% 
+p_cured = count_by_date %>% 
   select(DayCuredCount: DayseriousCount, updateDate) %>%
   gather(category, count, DayCuredCount: DayseriousCount) %>%
   ggplot(aes(x = factor(updateDate), y = count, col = category, group = category)) + 
@@ -91,6 +91,8 @@ Column {data-width=400}
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
 
+ggplotly(p_cured) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
 ### 新增确诊，新增疑似
@@ -99,10 +101,9 @@ Column {data-width=400}
 dailyInc = count_by_date %>%
   gather(category, count, DayConfirmedCount:DayseriousCount) %>%
   arrange(category, updateDate) %>%
-  group_by(category) %>%
   mutate(countInc = lag(count))
 
-dailyInc %>% 
+p_inc = dailyInc %>% 
   subset(category %in% c('DayConfirmedCount', 'DaySuspectedCount')
          & !is.na(countInc)) %>%
   ggplot(aes(x = factor(updateDate), y = countInc, col = category, group = category)) + 
@@ -119,18 +120,20 @@ dailyInc %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1), 
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
-  
+ 
+ggplotly(p_inc) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
 区域变化
 =======================================================================
 
-Column {data-width=650}
------------------------------------------------------------------------
+<!-- Column {data-width=650} -->
+<!-- ----------------------------------------------------------------------- -->
 
 ### 确诊，疑似湖北省内外对比 
 
-```{r}
+```{r hubei_others}
 province_count = DXYArea %>% 
   mutate(updateDate = date(updateTime)) %>%  
   select(provinceName, province_confirmedCount, province_curedCount, province_deadCount, updateDate) %>%
@@ -139,42 +142,29 @@ province_count = DXYArea %>%
   summarise(count = max(count))
   
 hubei_v_others = province_count %>%
-  mutate(isHubei = ifelse(provinceName == '湖北省', 'Hubei', 'Others')) %>%
+  mutate(isHubei = ifelse(provinceName == '湖北省', 'Hubei', 'Outside Hubei')) %>%
   group_by(category, updateDate,isHubei) %>%
   summarise(tot_count = sum(count))
   
-hubei_v_others %>% 
+p_hubei_v_others = hubei_v_others %>% 
   group_by(category, isHubei) %>%
   arrange(updateDate) %>%
   mutate(date_num = rank(updateDate)) %>%
-  ggplot(aes(x = date_num, y = tot_count, col = isHubei, group = isHubei)) + 
+  ungroup() %>%
+  ggplot(aes(x = factor(updateDate), y = tot_count, col = isHubei, group = isHubei)) + 
   geom_point() +
   geom_line() +
   xlab('Date') + 
   scale_y_continuous('Total Count') +
   ggtitle('Daily Confirmed and Suspected') +
-  scale_color_discrete('', breaks=c('Hubei', 'Others')) +
+  scale_color_discrete('', breaks=c('Hubei', 'Outside Hubei')) +
   facet_wrap(~category, scales = 'free_y') +
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1), 
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
-    
+
+ggplotly(p_hubei_v_others) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
-
-### 
-
-
-```{r}
-
-```
-
-
-###
-
-```{r}
-
-```
