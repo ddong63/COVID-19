@@ -36,13 +36,13 @@ count_by_date = DXYOverall %>%
 ```
 
 
-每日数量
+数量汇总(Summary Statistics)
 =======================================================================
 
 Column {data-width=500}
 -----------------------------------------------------------------------
 
-### 确诊，疑似病例数量
+### 确诊，疑似病例数量 (Confirmed vs Suspected Count)
 
 ```{r daily_confirm_suspect}
 p_confirm = 
@@ -72,7 +72,7 @@ ggplotly(p_confirm)  %>%
 Column {data-width=400}
 -----------------------------------------------------------------------
 
-### 治愈，死亡，重症人数
+### 治愈，死亡，重症人数 (Confirmed, Cured, Serious Count)
 
 ```{r daily_cured_death}
 p_cured = count_by_date %>% 
@@ -95,13 +95,13 @@ ggplotly(p_cured) %>%
   layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
-### 新增确诊，新增疑似
+### 新增确诊，新增疑似 (Confirmed and Suspected Counts Daily Increase)
 
 ```{r daily_increased}
 dailyInc = count_by_date %>%
   gather(category, count, DayConfirmedCount:DayseriousCount) %>%
   arrange(category, updateDate) %>%
-  mutate(countInc = lag(count))
+  mutate(countInc = pmax(0, count - lag(count)))
 
 p_inc = dailyInc %>% 
   subset(category %in% c('DayConfirmedCount', 'DaySuspectedCount')
@@ -110,9 +110,9 @@ p_inc = dailyInc %>%
   geom_point() +
   geom_line() +
   xlab('Date') + 
-  scale_y_continuous('Count', 
-                     breaks = c(1, 5000, 10000, 15000, 20000, 25000),
-                     labels = c('1', '5,000', '10,000', '15,000', '20,000', '25,000')) +
+  scale_y_continuous('Count',
+                     breaks = c(1, 1000, 2000, 3000, 4000, 5000),
+                     labels = c('1', '1,000', '2,000','3,000','4,000','5,000')) +
   ggtitle('Daily Increase Confirmed and Suspected') +
   scale_color_discrete('', breaks=c('DayConfirmedCount', 'DaySuspectedCount'),
                        labels=c('Confirmed Increased', 'Suspected Increased')) +
@@ -125,13 +125,13 @@ ggplotly(p_inc) %>%
   layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
-区域变化
+区域变化(Regional Trend)
 =======================================================================
 
 <!-- Column {data-width=650} -->
 <!-- ----------------------------------------------------------------------- -->
 
-### 确诊，疑似湖北省内外对比 
+### 确诊，疑似湖北省内外对比(Confirmed and Suspected Counts (Hubei vs. Other Areas))
 
 ```{r hubei_others}
 province_count = DXYArea %>% 
