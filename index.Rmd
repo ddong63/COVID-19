@@ -28,7 +28,7 @@ DXYRumors = read_csv('https://raw.githubusercontent.com/BlankerL/DXY-2019-nCoV-D
 ```{r}
 count_by_date = DXYOverall %>% 
   select(confirmedCount:seriousCount, updateTime) %>%
-  mutate(updateDate = date(updateTime)) %>%
+  mutate(updateDate = factor(date(updateTime))) %>%
   group_by(updateDate) %>%
   summarise(DayConfirmedCount = max(confirmedCount),
             DaySuspectedCount = max(suspectedCount),
@@ -51,7 +51,7 @@ p_confirm =
   count_by_date %>% 
   select(DayConfirmedCount, DaySuspectedCount, updateDate) %>%
   gather(category, count, DayConfirmedCount, DaySuspectedCount) %>%
-  ggplot(aes(x = factor(updateDate), y = count, col = category, group = category)) + 
+  ggplot(aes(x = updateDate, y = count, col = category, group = category)) + 
   geom_point() +
   geom_line() +
   xlab('Date') + 
@@ -78,7 +78,7 @@ ggplotly(p_confirm)  %>%
 p_cured = count_by_date %>% 
   select(DayCuredCount: DayseriousCount, updateDate) %>%
   gather(category, count, DayCuredCount: DayseriousCount) %>%
-  ggplot(aes(x = factor(updateDate), y = count, col = category, group = category)) + 
+  ggplot(aes(x = updateDate, y = count, col = category, group = category)) + 
   geom_point() +
   geom_line() +
   scale_x_discrete('Date') + 
@@ -105,6 +105,7 @@ Column {data-width=400}
 count_by_date %>% 
   select(-DayseriousCount) %>%
   arrange(desc(updateDate)) %>%
+  `colnames<-`(c('Date', 'Confirmed', 'Suspected', 'Cured', 'Dead')) %>%
   datatable(caption = 'Table 1: Daily Counts (Confirmed, Suspected, Cured, Dead).', 
             filter = 'top', options = list(pageLength = 50))
 ```
@@ -126,7 +127,7 @@ dailyInc = count_by_date %>%
 p_inc = dailyInc %>% 
   subset(category %in% c('DayConfirmedCount', 'DaySuspectedCount')
          & !is.na(countInc)) %>%
-  ggplot(aes(x = factor(updateDate), y = countInc, col = category, group = category)) + 
+  ggplot(aes(x = updateDate, y = countInc, col = category, group = category)) + 
   geom_point() +
   geom_line() +
   xlab('Date') + 
@@ -151,7 +152,7 @@ ggplotly(p_inc) %>%
 p_cure_inc = dailyInc %>% 
   subset(category %in% c('DayCuredCount', 'DayDeadCount')
          & !is.na(countInc)) %>%
-  ggplot(aes(x = factor(updateDate), y = countInc, col = category, group = category)) + 
+  ggplot(aes(x = updateDate, y = countInc, col = category, group = category)) + 
   geom_point() +
   geom_line() +
   xlab('Date') + 
@@ -175,8 +176,14 @@ Column {data-width=400}
 
 ```{r dailyInc_dt}
 dailyInc %>% 
+  select(-count) %>%
+  spread(category, countInc) %>%
   arrange(desc(updateDate)) %>%
-  datatable(caption = 'Table 2: Daily Increase Counts (Confirmed, Suspected, Cured, Dead).', filter = 'top', options = list(pageLength = 50))
+  select(-DayseriousCount) %>%
+  `colnames<-`(c('Date', 'Confirmed Increased', 'Cured Increased', 'Dead Increased', 'Suspected Increased')) %>%
+  datatable(caption = 'Table 2: Daily Increase Counts (Confirmed, Suspected, Cured, Dead).', 
+            filter = 'top', 
+            options = list(pageLength = 50))
 ```
 
 湖北及其他省份(Hubei vs. Non-Hubei)
@@ -189,7 +196,7 @@ Column {data-width=500}
 
 ```{r hubei_others}
 province_count = DXYArea %>% 
-  mutate(updateDate = date(updateTime)) %>%  
+  mutate(updateDate = factor(date(updateTime))) %>%  
   select(provinceName, province_confirmedCount, province_curedCount, province_deadCount, updateDate) %>%
   gather(category, count, province_confirmedCount:province_deadCount) %>%
   group_by(provinceName, updateDate, category) %>%
@@ -205,7 +212,7 @@ p_hubei_v_others = hubei_v_others %>%
   arrange(updateDate) %>%
   mutate(date_num = rank(updateDate)) %>%
   ungroup() %>%
-  ggplot(aes(x = factor(updateDate), y = tot_count, col = isHubei, group = isHubei)) + 
+  ggplot(aes(x = updateDate, y = tot_count, col = isHubei, group = isHubei)) + 
   geom_point() +
   geom_line() +
   xlab('Date') + 
@@ -229,9 +236,8 @@ Column {data-width=400}
 
 ```{r hubei_others_dt}
 hubei_v_others_wd = hubei_v_others %>% 
-  spread(category, tot_count)
-
-colnames(hubei_v_others_wd) = c('Date', 'Province', 'Confirmed', 'Cured', 'Dead')
+  spread(category, tot_count) %>%
+  `colnames<-`(c('Date', 'Province', 'Confirmed', 'Cured', 'Dead')) 
 
 hubei_v_others_wd %>% 
   ungroup() %>%
@@ -241,6 +247,20 @@ hubei_v_others_wd %>%
 
 区域变化(Province Trend)
 =======================================================================
+
+```{r eval=F}
+china <- map("china", plot = F)
+ggplot() + 
+  geom_path(data = china, aes(long, lat, group = group), color = '#FD9FA4', show.legend = F) +
+  geom_point(data = mat.cities, aes(x = long, y = lat, size = population), alpha = 0.8, color = '#8BB6D6') +
+  # geom_text_repel(data = mat.cities, aes(x = long, y = lat, label = names), family = "STHeiti") +
+  geom_text(data = mat.cities, aes(x = long, y = lat, label = names), family = "STHeiti") +
+  labs(x = '经度', y = '纬度', title = '中国十二个地区人口地图', size = '人口(百万)') + 
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        text = element_text(family = "STHeiti"),
+        plot.title = element_text(hjust = 0.5))
+```
 
 
 城市变化(City Trend)
