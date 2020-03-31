@@ -1,0 +1,270 @@
+---
+title: "新型冠状病毒变化分析(2019-nCov Analysis)"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup}
+library(flexdashboard)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(plotly)
+library(tidyr)
+library(DT)
+
+```
+
+```{r load_data}
+DXYArea = read_csv('https://raw.githubusercontent.com/BlankerL/DXY-2019-nCoV-Data/master/csv/DXYArea.csv')
+DXYNews = read_csv('https://raw.githubusercontent.com/BlankerL/DXY-2019-nCoV-Data/master/csv/DXYNews.csv')
+DXYOverall = read_csv('https://raw.githubusercontent.com/BlankerL/DXY-2019-nCoV-Data/master/csv/DXYOverall.csv')
+DXYRumors = read_csv('https://raw.githubusercontent.com/BlankerL/DXY-2019-nCoV-Data/master/csv/DXYRumors.csv')
+```
+
+```{r}
+count_by_date = DXYOverall %>% 
+  select(confirmedCount:seriousCount, updateTime) %>%
+  mutate(updateDate = factor(date(updateTime))) %>%
+  group_by(updateDate) %>%
+  summarise(DayConfirmedCount = max(confirmedCount),
+            DaySuspectedCount = max(suspectedCount),
+            DayCuredCount = max(curedCount),
+            DayDeadCount = max(deadCount),
+            DayseriousCount = max(seriousCount))
+```
+
+
+每日数量(Daily Counts)
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### 确诊，疑似病例数量 (Confirmed vs Suspected Count)
+
+```{r daily_confirm_suspect}
+p_confirm = 
+  count_by_date %>% 
+  select(DayConfirmedCount, DaySuspectedCount, updateDate) %>%
+  gather(category, count, DayConfirmedCount, DaySuspectedCount) %>%
+  ggplot(aes(x = updateDate, y = count, col = category, group = category)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Count',
+                breaks = c(1, 5000, 10000, 15000, 20000, 30000, 40000, 50000),
+                labels = c('1', '5,000', '10,000', '15,000', '20,000', '30,000', '40,000', '50,000')) +
+  ggtitle('Daily Confirmed and Suspected') +
+  scale_color_discrete('', breaks=c('DayConfirmedCount', 'DaySuspectedCount'),
+                       labels=c('Daily Confirmed', 'Daily Suspected')) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+
+ggplotly(p_confirm)  %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+
+```
+
+
+### 治愈，死亡，重症人数 (Confirmed, Cured, Serious Count)
+
+```{r daily_cured_death}
+p_cured = count_by_date %>% 
+  select(DayCuredCount: DayseriousCount, updateDate) %>%
+  gather(category, count, DayCuredCount: DayseriousCount) %>%
+  ggplot(aes(x = updateDate, y = count, col = category, group = category)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_discrete('Date') + 
+  scale_y_log10('Count') +
+  ggtitle('Daily Cured, Death and Serious') +
+  scale_color_discrete('', breaks=c('DayCuredCount', 'DayDeadCount', 'DayseriousCount'),
+                       labels=c('Daily Cured', 'Daily Death', 'Daily Serious')) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+
+ggplotly(p_cured) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 数据汇总(Daily Counts Table)
+
+```{r daily_counts_dt}
+count_by_date %>% 
+  select(-DayseriousCount) %>%
+  arrange(desc(updateDate)) %>%
+  `colnames<-`(c('Date', 'Confirmed', 'Suspected', 'Cured', 'Dead')) %>%
+  datatable(caption = 'Table 1: Daily Counts (Confirmed, Suspected, Cured, Dead).', 
+            filter = 'top', options = list(pageLength = 50))
+```
+
+每日新增(Daily Increase)
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### 新增确诊，新增疑似 (Confirmed and Suspected Counts Daily Increase)
+
+```{r confirmed_increased}
+dailyInc = count_by_date %>%
+  gather(category, count, DayConfirmedCount:DayseriousCount) %>%
+  arrange(category, updateDate) %>%
+  mutate(countInc = pmax(0, count - lag(count)))
+
+p_inc = dailyInc %>% 
+  subset(category %in% c('DayConfirmedCount', 'DaySuspectedCount')
+         & !is.na(countInc)) %>%
+  ggplot(aes(x = updateDate, y = countInc, col = category, group = category)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Count',
+                     breaks = c(1, 1000, 2000, 3000, 4000, 5000),
+                     labels = c('1', '1,000', '2,000','3,000','4,000','5,000')) +
+  ggtitle('Daily Increase Confirmed and Suspected') +
+  scale_color_discrete('', breaks=c('DayConfirmedCount', 'DaySuspectedCount'),
+                       labels=c('Confirmed Increased', 'Suspected Increased')) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+ 
+ggplotly(p_inc) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+### 新增治愈，新增死亡 (Cured and Dead Counts Daily Increase)
+
+```{r cured_increased}
+p_cure_inc = dailyInc %>% 
+  subset(category %in% c('DayCuredCount', 'DayDeadCount')
+         & !is.na(countInc)) %>%
+  ggplot(aes(x = updateDate, y = countInc, col = category, group = category)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Count',
+                     breaks = seq(0, 500, by = 50)) +
+  ggtitle('Daily Increase Cured and Dead') +
+  scale_color_discrete('', breaks=c('DayCuredCount', 'DayDeadCount')) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+ 
+ggplotly(p_cure_inc) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 每日新增数据 (Daily Increase Counts)
+
+```{r dailyInc_dt}
+dailyInc %>% 
+  select(-count) %>%
+  spread(category, countInc) %>%
+  arrange(desc(updateDate)) %>%
+  select(-DayseriousCount) %>%
+  `colnames<-`(c('Date', 'Confirmed Increased', 'Cured Increased', 'Dead Increased', 'Suspected Increased')) %>%
+  datatable(caption = 'Table 2: Daily Increase Counts (Confirmed, Suspected, Cured, Dead).', 
+            filter = 'top', 
+            options = list(pageLength = 50))
+```
+
+湖北及其他省份(Hubei vs. Non-Hubei)
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### 确诊，治愈，死亡湖北省内外对比(Confirmed, Cured, Dead Counts (Hubei vs. Other Areas))
+
+```{r hubei_others}
+province_count = DXYArea %>% 
+  mutate(updateDate = factor(date(updateTime))) %>%  
+  select(provinceName, province_confirmedCount, province_curedCount, province_deadCount, updateDate) %>%
+  gather(category, count, province_confirmedCount:province_deadCount) %>%
+  group_by(provinceName, updateDate, category) %>%
+  summarise(count = max(count))
+  
+hubei_v_others = province_count %>%
+  mutate(isHubei = ifelse(provinceName == '湖北省', 'Hubei', 'Outside Hubei')) %>%
+  group_by(category, updateDate,isHubei) %>%
+  summarise(tot_count = sum(count))
+  
+p_hubei_v_others = hubei_v_others %>% 
+  group_by(category, isHubei) %>%
+  arrange(updateDate) %>%
+  mutate(date_num = rank(updateDate)) %>%
+  ungroup() %>%
+  ggplot(aes(x = updateDate, y = tot_count, col = isHubei, group = isHubei)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Total Count') +
+  ggtitle('Daily Confirmed and Suspected') +
+  scale_color_discrete('', breaks=c('Hubei', 'Outside Hubei')) +
+  facet_wrap(~category, scales = 'free_y', nrow=2) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+
+ggplotly(p_hubei_v_others) %>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### 确诊，治愈，死亡湖北省内外数据(Confirmed, Cured, Dead Counts (Hubei vs. Other Areas) Counts)
+
+```{r hubei_others_dt}
+hubei_v_others_wd = hubei_v_others %>% 
+  spread(category, tot_count) %>%
+  `colnames<-`(c('Date', 'Province', 'Confirmed', 'Cured', 'Dead')) 
+
+hubei_v_others_wd %>% 
+  ungroup() %>%
+  arrange(desc(Date)) %>%
+  datatable(caption = 'Table 3: Confirmed, Cured, Dead Counts (Hubei vs. Other Areas) Counts', filter = 'top', options = list(pageLength = 50))
+```
+
+区域变化(Province Trend)
+=======================================================================
+
+```{r eval=F}
+china <- map("china", plot = F)
+ggplot() + 
+  geom_path(data = china, aes(long, lat, group = group), color = '#FD9FA4', show.legend = F) +
+  geom_point(data = mat.cities, aes(x = long, y = lat, size = population), alpha = 0.8, color = '#8BB6D6') +
+  # geom_text_repel(data = mat.cities, aes(x = long, y = lat, label = names), family = "STHeiti") +
+  geom_text(data = mat.cities, aes(x = long, y = lat, label = names), family = "STHeiti") +
+  labs(x = '经度', y = '纬度', title = '中国十二个地区人口地图', size = '人口(百万)') + 
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        text = element_text(family = "STHeiti"),
+        plot.title = element_text(hjust = 0.5))
+```
+
+
+城市变化(City Trend)
+=======================================================================
+
+
+
