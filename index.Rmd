@@ -15,10 +15,31 @@ library(lubridate)
 library(plotly)
 library(tidyr)
 library(DT)
+library(ggmap)
+library(maptools)
+library(maps)
 
 devtools::install_github("RamiKrispin/coronavirus")
 library(coronavirus)
 data("coronavirus")
+world_map <- map_data("world")
+# https://github.com/nytimes/covid-19-data
+states_covid = read_csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv')
+county_covid = read_csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
+```
+
+```{r}
+
+diff = unique(coronavirus$Country.Region)[!unique(coronavirus$Country.Region) %in% unique(world_map$region)]
+
+coronavirus = coronavirus %>%
+  mutate(Country.Region = recode(Country.Region, 
+                                 "US" = "USA",
+                                 "Korea, South" = "South Korea",
+                                 "Taiwan*" = "Taiwan",
+                                 "United Kingdom" = "UK",
+                                 "Congo (Kinshasa)" = "Democratic Republic of the Congo",
+                                 "Congo (Brazzaville)" = "Republic of Congo"))
 ```
 
 
@@ -33,8 +54,32 @@ total_counts =
   summarise(N = sum(pmax(0, cases))) %>%
   arrange(desc(N))
 
+total_counts_geo = coronavirus %>% 
+  group_by(Country.Region, Lat, Long, type) %>%
+  summarise(N = sum(pmax(0, cases))) %>%
+  arrange(desc(N))
+
+total_counts_state = states_covid %>% 
+  group_by(state) %>%
+  arrange(desc(date)) %>%
+  slice(1) %>%
+  mutate(region = tolower(state)) 
 ```
 
+```{r plain-plot-theme}
+plain <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_rect(fill = "white"),
+  plot.title = element_text(hjust = 0.5)
+)
+
+
+```
 
 
 Quick Facts
@@ -117,6 +162,57 @@ total_counts %>%
   scale_fill_discrete('', limits = c('confirmed', 'recovered', 'death')) + 
   theme_bw() + theme(legend.position = 'top') 
 
+```
+
+Map
+=======================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### US Map
+
+```{r}
+states_map <- map_data("state")
+covid_states <-  inner_join(states_map, total_counts_state, by = c("region"))
+
+df = covid_states %>% 
+  group_by(region) %>%
+  summarise(lat = mean(c(max(lat), min(lat))),
+            long = mean(c(max(long), min(long))),
+            cases = max(cases)) %>% ungroup() 
+
+# Create the map
+
+ggplot(covid_states) +
+  coord_fixed(1.3) +
+  geom_polygon(aes(x = long, lat, group = group, color = 'grey', fill = cases)) +
+  scale_fill_distiller('Confirmed Cases', palette ="Reds", direction = 1) +
+  ggtitle("US COVID Confirmed Cases") +
+  geom_text(data = df, aes(x = long, y = lat, label = cases), size = 2) +
+  plain + guides(color = FALSE, size = FALSE) 
+
+```
+
+### World Map
+
+```{r}
+# https://sarahpenir.github.io/r/making-maps/
+world_map <- map_data("world")
+covid_map <- inner_join(world_map, total_counts_geo, by = c("region" = 'Country.Region'))
+
+# Create the map
+covid_map = covid_map %>% 
+  ungroup() %>% 
+  filter(type == 'confirmed') %>%
+  ggplot(mapping = aes(x = long, lat, group = group)) +
+  coord_fixed(1.3) +
+  geom_polygon(aes(fill = N)) +
+  scale_fill_distiller('Confirmed Cases', palette ="Reds", direction = 1) +
+  ggtitle("Global COVID Confirmed Cases") +
+  plain
+
+covid_map
 ```
 
 
