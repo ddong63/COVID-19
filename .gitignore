@@ -6,3 +6,5 @@
 docs/README.html
 docs/README.en.html
 *.DS_Store
+archive/
+*.jpeg

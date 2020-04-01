@@ -18,6 +18,7 @@ library(DT)
 library(ggmap)
 library(maptools)
 library(maps)
+options(scipen = 999)
 
 devtools::install_github("RamiKrispin/coronavirus")
 library(coronavirus)
@@ -164,7 +165,99 @@ total_counts %>%
 
 ```
 
-Map
+Major States
+=======================================================================
+
+Row {.tabset .tabset-fade, column-height = 500}
+-----------------------------------------------------------------------
+
+```{r}
+library(gganimate)
+
+major_states = states_covid %>%
+  subset(state %in% c('New York', 'California', 'Illinois', 'Washington', 'New Jersey')) %>%
+  group_by(state, date) %>%
+  summarise(cases = sum(cases, na.rm = T), 
+            deaths = sum(deaths, na.rm = T)) %>%
+  filter(!is.na(date))
+
+#ggplotly(p)
+#p = ggplot(major_states, aes(x = deaths, y = cases)) + geom_point(aes(size=cases,ids=state))
+#gif = p+transition_time(date)+ labs(title = "Date: {frame_time}")
+#anim_save("trend.gif", gif)
+
+```
+
+### Daily confirmed cases trend
+
+<!-- ![](giphy.gif) -->
+
+```{r}
+
+p1 = major_states %>%
+  group_by(state) %>%
+  arrange(date) %>%
+  ungroup() %>%
+  ggplot(aes(x = date, y = cases, col = state, group = state)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_continuous('Total Count', breaks = c(0, 50000, 100000, 150000),
+                     labels = c('0', '50,000', '100,000', '150,000')) +
+  ggtitle('Daily Confirmed Casee') +
+  scale_color_discrete('') +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+
+p1
+#ggplotly(p1)%>%
+#  layout(legend = list(orientation = "v", x = 0, y = 1))
+  
+```
+
+### Daily confirmed cases trend (Log Scale)
+
+```{r}
+
+p2=major_states %>%
+  group_by(state) %>%
+  arrange(date) %>%
+  ungroup() %>%
+  ggplot(aes(x = date, y = cases, col = state, group = state)) + 
+  geom_point() +
+  geom_line() +
+  xlab('Date') + 
+  scale_y_log10('Total Count (Log10 Scale)', breaks = c(1, 10, 100, 1000, 10000, 100000),
+                labels = c('1', '10', '100', '1,000', '10,000', '100,000')) +
+  ggtitle('Daily Confirmed Casee') +
+  scale_color_discrete('') +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom') 
+
+p2
+#ggplotly(p2)%>%
+#  layout(legend = list(orientation = "v", x = 0, y = 1))
+```
+
+
+Row {column-height = 400}
+-----------------------------------------------------------------------
+
+### Daily confirmed cases trend (Log Scale)
+
+```{r}
+major_states %>% 
+  arrange(desc(date)) %>%
+  `colnames<-`(c('State', 'Date', 'Confirmed', 'Dead')) %>%
+  datatable(caption = 'Table 1: Daily Counts (Confirmed and Dead).', 
+            filter = 'top', options = list(pageLength = 20))
+```
+
+US Map
 =======================================================================
 
 Row {.tabset .tabset-fade}
@@ -190,9 +283,10 @@ ggplot(covid_states) +
   scale_fill_distiller('Confirmed Cases', palette ="Reds", direction = 1) +
   ggtitle("US COVID Confirmed Cases") +
   geom_text(data = df, aes(x = long, y = lat, label = cases), size = 2) +
+  #geom_point(data = df, aes(x = long, y = lat, size = cases), col='red') +
   plain + guides(color = FALSE, size = FALSE) 
-
 ```
+
 
 ### World Map
 
@@ -216,4 +310,19 @@ covid_map
 ```
 
 
+<!-- US vs. World -->
+<!-- ======================================================================= -->
+
+<!-- Row  -->
+<!-- ----------------------------------------------------------------------- -->
+
+<!-- ```{r} -->
+<!-- dailyInc = states_covid %>% -->
+<!--   arrange(state, date) %>% -->
+<!--   mutate(confirmedInc = pmax(0, cases - lag(cases)),  -->
+<!--          rate = confirmedInc / lag(cases) ) %>% -->
+<!--   select(date, state, confirmedInc, rate) -->
+
+<!-- dailyInc %>% ggplot() -->
+<!-- ``` -->
 
