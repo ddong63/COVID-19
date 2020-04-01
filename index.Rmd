@@ -194,7 +194,7 @@ major_states = states_covid %>%
 
 ```{r}
 
-p1 = major_states %>%
+daily = major_states %>%
   group_by(state) %>%
   arrange(date) %>%
   ungroup() %>%
@@ -211,7 +211,7 @@ p1 = major_states %>%
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
 
-p1
+daily
 #ggplotly(p1)%>%
 #  layout(legend = list(orientation = "v", x = 0, y = 1))
   
@@ -248,6 +248,7 @@ Row {column-height = 400}
 -----------------------------------------------------------------------
 
 ### Daily confirmed cases trend (Log Scale)
+
 
 ```{r}
 major_states %>% 
