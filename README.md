@@ -1,12 +1,10 @@
-# 2019新型冠状病毒（2019-nCov）疫情状况数据分析
-简体中文 | [English](README.en.md)
-
-本项目为2019新型冠状病毒疫情状况分析，数据来源于[丁香园](https://ncov.dxy.cn/ncovh5/view/pneumonia)，由[Isaac Lin](https://github.com/BlankerL)整理并发布于github共享资源。希望可以为学者提供一些量化分析。
-
-[每日数据分析及汇总链接](https://ddong63.github.io/coronavirus_analysis/)
+# COVID-19 Data Dashboard
 
 
-## 数据定义
+# Coronavirus Analysis
 
+COVID-19 time series infection data for each country is pulled from [JHU CSSE](https://github.com/CSSEGISandData/COVID-19)
 
-## 图标解析
+COVID-19 time series infection data for china is sourced from Ding Xiang Yuan, crawled by https://github.com/BlankerL/DXY-2019-nCoV-Data.
+
+Summary statistics and trend analysis can be found [here](https://ddong63.github.io/COVID-19/)
