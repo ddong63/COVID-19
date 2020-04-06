@@ -162,7 +162,6 @@ total_counts %>%
   xlab('Country') + ylab('Total Cases') + 
   scale_fill_discrete('', limits = c('confirmed', 'recovered', 'death')) + 
   theme_bw() + theme(legend.position = 'top') 
-
 ```
 
 Major States
@@ -211,9 +210,9 @@ daily = major_states %>%
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
 
-daily
-#ggplotly(p1)%>%
-#  layout(legend = list(orientation = "v", x = 0, y = 1))
+
+ggplotly(daily)%>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
   
 ```
 
@@ -238,9 +237,9 @@ p2=major_states %>%
         plot.title = element_text(hjust = 0.5),
         legend.position = 'bottom') 
 
-p2
-#ggplotly(p2)%>%
-#  layout(legend = list(orientation = "v", x = 0, y = 1))
+
+ggplotly(p2)%>%
+  layout(legend = list(orientation = "v", x = 0, y = 1))
 ```
 
 
