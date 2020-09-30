@@ -1,5 +1,6 @@
 # COVID-19 Data Dashboard
 
+Please checkout [here](https://ddong63.github.io/COVID-19/) for the dashboard
 
 # Coronavirus Analysis
 
